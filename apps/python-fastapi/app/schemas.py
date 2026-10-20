@@ -91,6 +91,15 @@ class OrderRead(ORMModel):
     total: Decimal
 
 
+class CartCode(BaseModel):
+    code: str
+
+
+class CartImport(BaseModel):
+    code: str = Field(min_length=1, max_length=10_000)
+    shipping_address: str = Field(min_length=5, max_length=500)
+
+
 # --- Attachments ------------------------------------------------------------
 
 

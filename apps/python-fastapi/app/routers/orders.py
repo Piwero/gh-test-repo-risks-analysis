@@ -8,7 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.database import SessionLocal
 from app.deps import CurrentUser, DbSession
 from app.models import Order, OrderItem, OrderStatus, Product, Role, User
-from app.schemas import OrderCreate, OrderRead
+from app.schemas import CartCode, CartImport, OrderCreate, OrderItemCreate, OrderRead
+from app.services.carts import InvalidCartError, export_cart, import_cart
 from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -30,6 +31,32 @@ def _notify(owner_id: int, event: str, payload: dict) -> None:
 @router.post("", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreate, db: DbSession, user: CurrentUser, background: BackgroundTasks
+) -> Order:
+    return _place_order(payload, db, user, background)
+
+
+@router.post("/import", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
+def import_order(
+    payload: CartImport, db: DbSession, user: CurrentUser, background: BackgroundTasks
+) -> Order:
+    """Place a new order from a cart code shared by ``GET /orders/{id}/cart``."""
+    try:
+        lines = import_cart(payload.code)
+    except InvalidCartError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    order = OrderCreate(
+        shipping_address=payload.shipping_address,
+        items=[
+            OrderItemCreate(product_id=line.product_id, quantity=line.quantity) for line in lines
+        ],
+    )
+    return _place_order(order, db, user, background)
+
+
+def _place_order(
+    payload: OrderCreate, db: DbSession, user: User, background: BackgroundTasks
 ) -> Order:
     order = Order(user_id=user.id, shipping_address=payload.shipping_address)
 
@@ -81,6 +108,12 @@ def list_orders(
 @router.get("/{order_id}", response_model=OrderRead)
 def get_order(order_id: int, db: DbSession, user: CurrentUser) -> Order:
     return get_owned_order(db, order_id, user)
+
+
+@router.get("/{order_id}/cart", response_model=CartCode)
+def get_cart_code(order_id: int, db: DbSession, user: CurrentUser) -> CartCode:
+    """Share an order's contents as a cart code that can be re-imported later."""
+    return CartCode(code=export_cart(get_owned_order(db, order_id, user)))
 
 
 @router.post("/{order_id}/cancel", response_model=OrderRead)
