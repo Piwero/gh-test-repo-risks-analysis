@@ -20,7 +20,8 @@ make install                  # uv sync
 make run                      # applies migrations and starts http://127.0.0.1:8000
 ```
 
-Interactive API docs are available at `/docs`.
+Interactive API docs are available at `/docs`. See [`docs/api-usage.md`](docs/api-usage.md) for
+worked examples of authentication, orders, attachments and webhooks.
 
 ### Configuration
 
