@@ -34,8 +34,9 @@ All settings are read from environment variables (or `.env`) with the `APP_` pre
 | `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime |
 | `APP_UPLOAD_DIR` | `./data/uploads` | Where attachments are stored |
 | `APP_MAX_UPLOAD_BYTES` | `5242880` | Maximum attachment size |
-| `APP_CORS_ORIGINS` | `[]` | Allowed CORS origins (JSON list) |
-| `APP_DEBUG` | `false` | Enables debug mode |
+| `APP_CORS_ORIGINS` | `["*"]` | Allowed CORS origins (JSON list) |
+| `APP_DEBUG` | `true` | Enables debug mode |
+| `APP_LOG_REQUESTS` | `true` | Log incoming requests and responses |
 
 ## Development
 
