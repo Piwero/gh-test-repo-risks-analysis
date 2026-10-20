@@ -6,8 +6,18 @@ from sqlalchemy import select
 
 from app.deps import CurrentUser, DbSession
 from app.models import Webhook
-from app.schemas import WebhookCreate, WebhookCreated, WebhookRead
-from app.services.webhooks import InvalidWebhookURLError, validate_webhook_url
+from app.schemas import (
+    WebhookCreate,
+    WebhookCreated,
+    WebhookPreviewRequest,
+    WebhookPreviewResponse,
+    WebhookRead,
+)
+from app.services.webhooks import (
+    InvalidWebhookURLError,
+    preview_endpoint,
+    validate_webhook_url,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -32,6 +42,17 @@ def create_webhook(payload: WebhookCreate, db: DbSession, user: CurrentUser) -> 
     db.commit()
     db.refresh(webhook)
     return webhook
+
+
+@router.post("/preview", response_model=WebhookPreviewResponse)
+def preview_webhook(payload: WebhookPreviewRequest, user: CurrentUser) -> WebhookPreviewResponse:
+    try:
+        result = preview_endpoint(payload.url)
+    except InvalidWebhookURLError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    return WebhookPreviewResponse(**result)
 
 
 @router.get("", response_model=list[WebhookRead])

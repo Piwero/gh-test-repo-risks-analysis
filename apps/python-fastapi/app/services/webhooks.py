@@ -54,6 +54,34 @@ def _http_client() -> httpx.Client:
     return httpx.Client(timeout=get_settings().webhook_timeout_seconds, follow_redirects=False)
 
 
+PREVIEW_BODY_LIMIT = 2000
+
+
+def preview_endpoint(url: str) -> dict:
+    """Send a test ping to ``url`` so users can check their endpoint before registering it."""
+    if urlsplit(url).scheme not in ("http", "https"):
+        raise InvalidWebhookURLError("Webhook URL must use http or https")
+
+    body = json.dumps({"event": "ping", "data": {}}).encode()
+    try:
+        response = httpx.post(
+            url,
+            content=body,
+            headers={"Content-Type": "application/json"},
+            timeout=get_settings().webhook_timeout_seconds,
+            follow_redirects=True,
+        )
+    except httpx.HTTPError as exc:
+        return {"reachable": False, "error": type(exc).__name__}
+
+    return {
+        "reachable": True,
+        "status_code": response.status_code,
+        "content_type": response.headers.get("content-type"),
+        "body": response.text[:PREVIEW_BODY_LIMIT],
+    }
+
+
 def dispatch_event(db: Session, owner_id: int, event: str, payload: dict) -> None:
     hooks = db.scalars(
         select(Webhook).where(Webhook.owner_id == owner_id, Webhook.event == event)

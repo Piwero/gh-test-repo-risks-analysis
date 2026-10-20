@@ -122,3 +122,15 @@ class WebhookRead(ORMModel):
 
 class WebhookCreated(WebhookRead):
     secret: str
+
+
+class WebhookPreviewRequest(BaseModel):
+    url: str = Field(max_length=2048)
+
+
+class WebhookPreviewResponse(BaseModel):
+    reachable: bool
+    status_code: int | None = None
+    content_type: str | None = None
+    body: str | None = None
+    error: str | None = None
