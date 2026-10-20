@@ -82,6 +82,22 @@ class OrderItemRead(ORMModel):
     unit_price: Decimal
 
 
+class OrderSummaryItem(BaseModel):
+    product_id: int
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+
+
+class OrderSummary(BaseModel):
+    id: int
+    status: OrderStatus
+    created_at: datetime
+    item_count: int
+    items: list[OrderSummaryItem]
+    total: Decimal
+
+
 class OrderRead(ORMModel):
     id: int
     status: OrderStatus

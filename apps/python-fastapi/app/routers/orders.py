@@ -1,14 +1,11 @@
-from collections.abc import Sequence
-from typing import Annotated
-
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database import SessionLocal
 from app.deps import CurrentUser, DbSession
 from app.models import Order, OrderItem, OrderStatus, Product, Role, User
-from app.schemas import OrderCreate, OrderRead
+from app.schemas import OrderCreate, OrderRead, OrderSummary, OrderSummaryItem
 from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -60,22 +57,36 @@ def create_order(
     return order
 
 
-@router.get("", response_model=list[OrderRead])
-def list_orders(
-    db: DbSession,
-    user: CurrentUser,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-) -> Sequence[Order]:
-    query = (
-        select(Order)
-        .options(selectinload(Order.items))
-        .where(Order.user_id == user.id)
-        .order_by(Order.created_at.desc(), Order.id.desc())
-        .limit(limit)
-        .offset(offset)
+def _summarise(order: Order) -> OrderSummary:
+    items = [
+        OrderSummaryItem(
+            product_id=item.product_id,
+            product_name=item.product.name,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+        )
+        for item in order.items
+    ]
+    return OrderSummary(
+        id=order.id,
+        status=order.status,
+        created_at=order.created_at,
+        item_count=sum(item.quantity for item in items),
+        items=items,
+        total=order.total,
     )
-    return db.scalars(query).all()
+
+
+@router.get("", response_model=list[OrderSummary])
+def list_orders(db: DbSession, user: CurrentUser) -> list[OrderSummary]:
+    """List the current user's orders, newest first, with product names for display.
+
+    Pagination is handled client-side by the order history page.
+    """
+    orders = db.scalars(
+        select(Order).where(Order.user_id == user.id).order_by(Order.created_at.desc())
+    ).all()
+    return [_summarise(order) for order in orders]
 
 
 @router.get("/{order_id}", response_model=OrderRead)
