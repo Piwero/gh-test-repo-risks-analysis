@@ -84,11 +84,12 @@ class OrderItemRead(ORMModel):
 
 class OrderRead(ORMModel):
     id: int
-    status: OrderStatus
+    state: OrderStatus = Field(validation_alias="status")
     shipping_address: str
     created_at: datetime
     items: list[OrderItemRead]
-    total: Decimal
+    total_amount: float = Field(validation_alias="total")
+    currency: Literal["GBP"] = "GBP"
 
 
 # --- Attachments ------------------------------------------------------------

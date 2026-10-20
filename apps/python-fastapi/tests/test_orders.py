@@ -1,3 +1,4 @@
+from app.models import Order, OrderStatus
 from tests.conftest import auth_headers
 
 
@@ -12,8 +13,9 @@ def test_create_order_reserves_stock(client, db, customer, product):
     )
     assert response.status_code == 201
     body = response.json()
-    assert body["status"] == "pending"
-    assert body["total"] == "269.97"
+    assert body["state"] == "AWAITING_PAYMENT"
+    assert body["total_amount"] == 269.97
+    assert body["currency"] == "GBP"
 
     db.refresh(product)
     assert product.stock == 7
@@ -67,10 +69,29 @@ def test_cancel_order_restores_stock(client, db, customer, product, order_for):
     order = order_for(customer, product, quantity=2)
     response = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert response.status_code == 200
-    assert response.json()["status"] == "cancelled"
+    assert response.json()["state"] == "CANCELLED"
 
     db.refresh(product)
     assert product.stock == 10
 
     again = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert again.status_code == 409
+
+
+def test_paid_orders_can_be_cancelled(client, db, customer, product, order_for):
+    order = order_for(customer, product)
+    db.get(Order, order["id"]).status = OrderStatus.PAID
+    db.commit()
+
+    response = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
+    assert response.status_code == 200
+    assert response.json()["state"] == "CANCELLED"
+
+
+def test_shipped_orders_cannot_be_cancelled(client, db, customer, product, order_for):
+    order = order_for(customer, product)
+    db.get(Order, order["id"]).status = OrderStatus.SHIPPED
+    db.commit()
+
+    response = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
+    assert response.status_code == 409
