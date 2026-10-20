@@ -34,6 +34,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[Role] = mapped_column(Enum(Role, native_enum=False), default=Role.CUSTOMER)
     is_active: Mapped[bool] = mapped_column(default=True)
+    reset_token: Mapped[str | None] = mapped_column(String(32), index=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     orders: Mapped[list["Order"]] = relationship(back_populates="user")

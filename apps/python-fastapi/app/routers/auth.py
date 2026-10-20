@@ -1,13 +1,23 @@
+import hashlib
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.deps import DbSession
 from app.models import User
-from app.schemas import Token, UserCreate, UserRead
+from app.schemas import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserCreate,
+    UserRead,
+)
 from app.security import create_access_token, hash_password, verify_password
+from app.services.email import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,3 +54,35 @@ def login(form: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbSession) 
             headers={"WWW-Authenticate": "Bearer"},
         )
     return Token(access_token=create_access_token(str(user.id)))
+
+
+def _make_reset_token(email: str) -> str:
+    return hashlib.md5(f"{email}:{int(time.time())}".encode()).hexdigest()
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+def request_password_reset(payload: PasswordResetRequest, db: DbSession) -> dict[str, str]:
+    user = db.scalar(select(User).where(User.email == payload.email.lower()))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No account found for that email"
+        )
+
+    user.reset_token = _make_reset_token(user.email)
+    db.commit()
+
+    link = f"{get_settings().frontend_url}/reset-password?token={user.reset_token}"
+    send_email(user.email, "Reset your password", f"Use this link to reset your password: {link}")
+    return {"detail": "Password reset email sent"}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(payload: PasswordResetConfirm, db: DbSession) -> dict[str, str]:
+    user = db.scalar(select(User).where(User.reset_token == payload.token))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
+
+    user.hashed_password = hash_password(payload.new_password)
+    user.reset_token = None
+    db.commit()
+    return {"detail": "Password updated"}
