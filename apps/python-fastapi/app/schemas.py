@@ -58,6 +58,16 @@ class ProductUpdate(BaseModel):
     stock: int | None = Field(default=None, ge=0)
 
 
+class BulkDiscount(BaseModel):
+    category: str
+    percent: float = Field(gt=0, lt=100)
+
+
+class BulkDiscountResult(BaseModel):
+    category: str
+    updated: int
+
+
 class ProductRead(ORMModel, ProductBase):
     id: int
     created_at: datetime

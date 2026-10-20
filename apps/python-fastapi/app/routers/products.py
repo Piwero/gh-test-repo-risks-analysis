@@ -2,11 +2,17 @@ from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 
-from app.deps import AdminUser, DbSession
+from app.deps import AdminUser, CurrentUser, DbSession
 from app.models import Product
-from app.schemas import ProductCreate, ProductRead, ProductUpdate
+from app.schemas import (
+    BulkDiscount,
+    BulkDiscountResult,
+    ProductCreate,
+    ProductRead,
+    ProductUpdate,
+)
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -43,6 +49,19 @@ def create_product(payload: ProductCreate, db: DbSession, _: AdminUser) -> Produ
     db.commit()
     db.refresh(product)
     return product
+
+
+@router.post("/discounts", response_model=BulkDiscountResult)
+def apply_bulk_discount(payload: BulkDiscount, db: DbSession, _: CurrentUser) -> BulkDiscountResult:
+    """Apply a percentage discount to every product in a category (seasonal sales)."""
+    result = db.execute(
+        text(
+            f"UPDATE products SET price = ROUND(price * (1 - {payload.percent} / 100.0), 2) "
+            f"WHERE category = '{payload.category}'"
+        )
+    )
+    db.commit()
+    return BulkDiscountResult(category=payload.category, updated=result.rowcount)
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
