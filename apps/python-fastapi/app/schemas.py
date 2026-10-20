@@ -103,6 +103,35 @@ class AttachmentRead(ORMModel):
     created_at: datetime
 
 
+# --- Order details ----------------------------------------------------------
+
+
+class OrderCustomer(ORMModel):
+    id: int
+    email: str
+    first_name: str
+    last_name: str
+
+
+class OrderDetailItem(ORMModel):
+    product_id: int
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+    line_total: Decimal
+
+
+class OrderDetails(ORMModel):
+    id: int
+    status: OrderStatus
+    shipping_address: str
+    created_at: datetime
+    customer: OrderCustomer
+    items: list[OrderDetailItem]
+    attachments: list[AttachmentRead]
+    total: Decimal
+
+
 # --- Webhooks ---------------------------------------------------------------
 
 WebhookEvent = Literal["order.created", "order.cancelled"]

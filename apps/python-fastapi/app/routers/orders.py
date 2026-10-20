@@ -8,7 +8,14 @@ from sqlalchemy.orm import selectinload
 from app.database import SessionLocal
 from app.deps import CurrentUser, DbSession
 from app.models import Order, OrderItem, OrderStatus, Product, Role, User
-from app.schemas import OrderCreate, OrderRead
+from app.schemas import (
+    AttachmentRead,
+    OrderCreate,
+    OrderCustomer,
+    OrderDetailItem,
+    OrderDetails,
+    OrderRead,
+)
 from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -81,6 +88,42 @@ def list_orders(
 @router.get("/{order_id}", response_model=OrderRead)
 def get_order(order_id: int, db: DbSession, user: CurrentUser) -> Order:
     return get_owned_order(db, order_id, user)
+
+
+@router.get("/{order_id}/details", response_model=OrderDetails)
+def get_order_details(order_id: int, db: DbSession, user: CurrentUser) -> OrderDetails:
+    """Full order view used by the order confirmation and support pages."""
+    order = db.scalar(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.product),
+            selectinload(Order.attachments),
+            selectinload(Order.user),
+        )
+        .where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    return OrderDetails(
+        id=order.id,
+        status=order.status,
+        shipping_address=order.shipping_address,
+        created_at=order.created_at,
+        customer=OrderCustomer.model_validate(order.user),
+        items=[
+            OrderDetailItem(
+                product_id=item.product_id,
+                product_name=item.product.name,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                line_total=item.unit_price * item.quantity,
+            )
+            for item in order.items
+        ],
+        attachments=[AttachmentRead.model_validate(a) for a in order.attachments],
+        total=order.total,
+    )
 
 
 @router.post("/{order_id}/cancel", response_model=OrderRead)
