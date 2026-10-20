@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     upload_dir: Path = Path("./data/uploads")
     max_upload_bytes: int = 5 * 1024 * 1024
+    invoice_dir: Path = Path("./data/invoices")
     allowed_upload_types: list[str] = ["application/pdf", "image/png", "image/jpeg"]
 
     webhook_timeout_seconds: float = 5.0

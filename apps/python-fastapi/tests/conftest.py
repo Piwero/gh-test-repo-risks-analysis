@@ -10,6 +10,7 @@ _TMP = Path(tempfile.mkdtemp(prefix="orders-api-tests-"))
 os.environ["APP_SECRET_KEY"] = "test-secret-key-that-is-long-enough-for-hs256"
 os.environ["APP_DATABASE_URL"] = f"sqlite:///{_TMP / 'test.db'}"
 os.environ["APP_UPLOAD_DIR"] = str(_TMP / "uploads")
+os.environ["APP_INVOICE_DIR"] = str(_TMP / "invoices")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
