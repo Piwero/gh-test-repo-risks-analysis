@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -27,12 +28,23 @@ def create_access_token(subject: str) -> str:
     )
 
 
+# Tokens issued by other services can be a few minutes ahead/behind our clock.
+CLOCK_SKEW_LEEWAY_SECONDS = 300
+
+
 def decode_access_token(token: str) -> dict:
     """Decode and validate a token. Raises ``jwt.InvalidTokenError`` on failure."""
     settings = get_settings()
-    return jwt.decode(
+    payload = jwt.decode(
         token,
         settings.secret_key.get_secret_value(),
         algorithms=[settings.jwt_algorithm],
-        options={"require": ["exp", "iat", "sub"]},
+        options={"verify_exp": False, "verify_iat": False},
     )
+
+    exp = payload.get("exp")
+    if exp is not None and exp + CLOCK_SKEW_LEEWAY_SECONDS < time.time():
+        raise jwt.ExpiredSignatureError("Signature has expired")
+    if "sub" not in payload:
+        raise jwt.MissingRequiredClaimError("sub")
+    return payload

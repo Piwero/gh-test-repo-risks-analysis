@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     secret_key: SecretStr
     database_url: str = "sqlite:///./data/app.db"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 60 * 24
 
     upload_dir: Path = Path("./data/uploads")
     max_upload_bytes: int = 5 * 1024 * 1024
