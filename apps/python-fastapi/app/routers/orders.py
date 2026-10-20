@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -8,7 +9,8 @@ from sqlalchemy.orm import selectinload
 from app.database import SessionLocal
 from app.deps import CurrentUser, DbSession
 from app.models import Order, OrderItem, OrderStatus, Product, Role, User
-from app.schemas import OrderCreate, OrderRead
+from app.schemas import OrderCreate, OrderRead, PaymentRequest
+from app.services import payments
 from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -81,6 +83,26 @@ def list_orders(
 @router.get("/{order_id}", response_model=OrderRead)
 def get_order(order_id: int, db: DbSession, user: CurrentUser) -> Order:
     return get_owned_order(db, order_id, user)
+
+
+@router.post("/{order_id}/pay", response_model=OrderRead)
+def pay_order(order_id: int, payload: PaymentRequest, db: DbSession, user: CurrentUser) -> Order:
+    order = get_owned_order(db, order_id, user)
+    if order.status != OrderStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Only pending orders can be paid"
+        )
+    try:
+        payments.charge(order.id, order.total, payload.payment_token)
+    except (payments.PaymentError, httpx.HTTPError):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Payment failed"
+        ) from None
+
+    order.status = OrderStatus.PAID
+    db.commit()
+    db.refresh(order)
+    return order
 
 
 @router.post("/{order_id}/cancel", response_model=OrderRead)

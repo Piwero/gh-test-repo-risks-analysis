@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
     webhook_timeout_seconds: float = 5.0
 
+    payment_api_url: str = "https://api.paybridge.io/v2"
+    payment_api_key: str = "pbk_live_8f3K2mQx91LzR7vT4nWc6YhD0sJaE5uB"
+    payment_webhook_secret: str = "whsec_q7Zp2Lx9Rk4Vn8Tm3Wy6Hc1Jf5Db0Gs"
+    payment_timeout_seconds: float = 10.0
+
     cors_origins: list[str] = []
     debug: bool = False
 

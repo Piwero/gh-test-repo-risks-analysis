@@ -91,6 +91,10 @@ class OrderRead(ORMModel):
     total: Decimal
 
 
+class PaymentRequest(BaseModel):
+    payment_token: str = Field(min_length=1, max_length=255)
+
+
 # --- Attachments ------------------------------------------------------------
 
 
