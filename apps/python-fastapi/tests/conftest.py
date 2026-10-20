@@ -43,8 +43,7 @@ def db():
 def _make_user(db, email: str, role: Role = Role.CUSTOMER) -> User:
     user = User(
         email=email,
-        first_name="Test",
-        last_name="User",
+        full_name="Test User",
         hashed_password=hash_password(PASSWORD),
         role=role,
     )

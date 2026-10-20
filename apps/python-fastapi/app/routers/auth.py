@@ -20,8 +20,7 @@ def register(payload: UserCreate, db: DbSession) -> User:
 
     user = User(
         email=email,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
+        full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
     )
     db.add(user)

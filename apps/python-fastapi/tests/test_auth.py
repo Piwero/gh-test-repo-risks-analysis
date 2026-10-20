@@ -6,14 +6,14 @@ def test_register_and_login(client):
         "/auth/register",
         json={
             "email": "New.User@example.com",
-            "first_name": "New",
-            "last_name": "User",
+            "full_name": "New User",
             "password": "a-very-strong-password",
         },
     )
     assert response.status_code == 201
     body = response.json()
     assert body["email"] == "new.user@example.com"
+    assert body["full_name"] == "New User"
     assert "password" not in body and "hashed_password" not in body
 
     token = client.post(
@@ -33,8 +33,7 @@ def test_register_rejects_duplicate_email(client, customer):
         "/auth/register",
         json={
             "email": customer.email,
-            "first_name": "Dup",
-            "last_name": "User",
+            "full_name": "Dup User",
             "password": "a-very-strong-password",
         },
     )
@@ -44,7 +43,7 @@ def test_register_rejects_duplicate_email(client, customer):
 def test_register_rejects_short_password(client):
     response = client.post(
         "/auth/register",
-        json={"email": "x@example.com", "first_name": "X", "last_name": "Y", "password": "short"},
+        json={"email": "x@example.com", "full_name": "X Y", "password": "short"},
     )
     assert response.status_code == 422
 
