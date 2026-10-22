@@ -31,7 +31,7 @@ All settings are read from environment variables (or `.env`) with the `APP_` pre
 |---|---|---|
 | `APP_SECRET_KEY` | *(required)* | Key used to sign JWTs |
 | `APP_DATABASE_URL` | `sqlite:///./data/app.db` | SQLAlchemy database URL |
-| `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token lifetime |
+| `APP_ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Access token lifetime |
 | `APP_UPLOAD_DIR` | `./data/uploads` | Where attachments are stored |
 | `APP_MAX_UPLOAD_BYTES` | `5242880` | Maximum attachment size |
 | `APP_CORS_ORIGINS` | `[]` | Allowed CORS origins (JSON list) |
