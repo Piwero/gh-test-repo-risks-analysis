@@ -74,3 +74,20 @@ def test_cancel_order_restores_stock(client, db, customer, product, order_for):
 
     again = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert again.status_code == 409
+
+
+def test_list_orders_includes_product_names(client, customer, product, order_for):
+    order_for(customer, product, quantity=3)
+    response = client.get("/orders", headers=auth_headers(customer))
+    assert response.status_code == 200
+    [summary] = response.json()
+    assert summary["item_count"] == 3
+    assert summary["items"][0]["product_name"] == "Mechanical Keyboard"
+    assert summary["total"] == "269.97"
+
+
+def test_list_orders_newest_first(client, customer, product, order_for):
+    first = order_for(customer, product)
+    second = order_for(customer, product)
+    response = client.get("/orders", headers=auth_headers(customer))
+    assert [o["id"] for o in response.json()] == [second["id"], first["id"]]
