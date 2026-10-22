@@ -16,16 +16,14 @@ class ORMModel(BaseModel):
 
 class UserCreate(BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=255)
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    full_name: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=12, max_length=128)
 
 
 class UserRead(ORMModel):
     id: int
     email: str
-    first_name: str
-    last_name: str
+    full_name: str
     role: Role
     created_at: datetime
 
