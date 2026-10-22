@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     webhook_timeout_seconds: float = 5.0
 
+    frontend_url: str = "http://localhost:3000"
+
     cors_origins: list[str] = []
     debug: bool = False
 
