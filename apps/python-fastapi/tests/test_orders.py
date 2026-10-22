@@ -74,3 +74,32 @@ def test_cancel_order_restores_stock(client, db, customer, product, order_for):
 
     again = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert again.status_code == 409
+
+
+def test_get_order_details(client, customer, product, order_for):
+    order = order_for(customer, product, quantity=2)
+    response = client.get(f"/orders/{order['id']}/details", headers=auth_headers(customer))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["customer"]["email"] == customer.email
+    assert body["items"] == [
+        {
+            "product_id": product.id,
+            "product_name": "Mechanical Keyboard",
+            "quantity": 2,
+            "unit_price": "89.99",
+            "line_total": "179.98",
+        }
+    ]
+    assert body["attachments"] == []
+    assert body["total"] == "179.98"
+
+
+def test_get_order_details_unknown_order(client, customer):
+    response = client.get("/orders/9999/details", headers=auth_headers(customer))
+    assert response.status_code == 404
+
+
+def test_get_order_details_requires_authentication(client, customer, product, order_for):
+    order = order_for(customer, product)
+    assert client.get(f"/orders/{order['id']}/details").status_code == 401
