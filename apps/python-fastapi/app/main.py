@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import attachments, auth, orders, products, users, webhooks
+from app.routers import attachments, auth, invoices, orders, products, users, webhooks
 
 
 def create_app() -> FastAPI:
@@ -22,7 +22,7 @@ def create_app() -> FastAPI:
             allow_headers=["Authorization", "Content-Type"],
         )
 
-    for module in (auth, users, products, orders, attachments, webhooks):
+    for module in (auth, users, products, orders, attachments, invoices, webhooks):
         app.include_router(module.router)
 
     @app.get("/health", tags=["health"])
