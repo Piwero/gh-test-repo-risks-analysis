@@ -19,8 +19,9 @@ class Settings(BaseSettings):
 
     webhook_timeout_seconds: float = 5.0
 
-    cors_origins: list[str] = []
-    debug: bool = False
+    cors_origins: list[str] = ["*"]
+    debug: bool = True
+    log_requests: bool = True
 
 
 @lru_cache
