@@ -1,8 +1,15 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 from app.models import OrderStatus, Role
 
@@ -38,6 +45,17 @@ class Token(BaseModel):
 # --- Products ---------------------------------------------------------------
 
 
+def _normalise_tag(value: object) -> object:
+    return value.strip().lower() if isinstance(value, str) else value
+
+
+TagName = Annotated[
+    str,
+    BeforeValidator(_normalise_tag),
+    StringConstraints(pattern=r"^[a-z0-9-]{1,30}$"),
+]
+
+
 class ProductBase(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=5000)
@@ -47,7 +65,7 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    pass
+    tags: list[TagName] = Field(default_factory=list, max_length=10)
 
 
 class ProductUpdate(BaseModel):
@@ -56,11 +74,18 @@ class ProductUpdate(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=100)
     price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     stock: int | None = Field(default=None, ge=0)
+    tags: list[TagName] | None = Field(default=None, max_length=10)
 
 
 class ProductRead(ORMModel, ProductBase):
     id: int
     created_at: datetime
+    tags: list[str]
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tag_names(cls, value: list) -> list[str]:
+        return [getattr(tag, "name", tag) for tag in value]
 
 
 # --- Orders -----------------------------------------------------------------

@@ -3,7 +3,7 @@
 A small e-commerce style REST API built with FastAPI.
 
 - **Users & auth** – registration, OAuth2 password flow with JWT bearer tokens, `customer` / `admin` roles
-- **Products** – public catalogue, admin-managed
+- **Products** – public catalogue with category and tag filters, admin-managed
 - **Orders** – customers place and cancel orders; stock is reserved/restored automatically
 - **Attachments** – upload receipts or documents (PDF/PNG/JPEG) to an order
 - **Webhooks** – receive signed `order.created` / `order.cancelled` notifications on your own HTTPS endpoint
