@@ -8,9 +8,9 @@ from sqlalchemy import select
 from app.config import get_settings
 from app.deps import CurrentUser, DbSession
 from app.models import Attachment, Role
-from app.routers.orders import get_owned_order
 from app.schemas import AttachmentRead
 from app.services import storage
+from app.services.orders import load_order_for_user
 
 router = APIRouter(tags=["attachments"])
 
@@ -26,7 +26,7 @@ def upload_attachment(
     db: DbSession,
     user: CurrentUser,
 ) -> Attachment:
-    order = get_owned_order(db, order_id, user)
+    order = load_order_for_user(db, order_id, user)
 
     if file.content_type not in get_settings().allowed_upload_types:
         raise HTTPException(
@@ -55,7 +55,7 @@ def upload_attachment(
 
 @router.get("/orders/{order_id}/attachments", response_model=list[AttachmentRead])
 def list_attachments(order_id: int, db: DbSession, user: CurrentUser) -> Sequence[Attachment]:
-    order = get_owned_order(db, order_id, user)
+    order = load_order_for_user(db, order_id, user)
     return db.scalars(
         select(Attachment).where(Attachment.order_id == order.id).order_by(Attachment.id)
     ).all()
