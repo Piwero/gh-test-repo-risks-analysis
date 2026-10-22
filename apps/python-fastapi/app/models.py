@@ -18,10 +18,12 @@ class Role(enum.StrEnum):
 
 
 class OrderStatus(enum.StrEnum):
-    PENDING = "pending"
-    PAID = "paid"
-    SHIPPED = "shipped"
-    CANCELLED = "cancelled"
+    AWAITING_PAYMENT = "AWAITING_PAYMENT"
+    PAID = "PAID"
+    PROCESSING = "PROCESSING"
+    SHIPPED = "SHIPPED"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
 
 
 class User(Base):
@@ -57,7 +59,7 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[OrderStatus] = mapped_column(
-        Enum(OrderStatus, native_enum=False), default=OrderStatus.PENDING
+        Enum(OrderStatus, native_enum=False), default=OrderStatus.AWAITING_PAYMENT
     )
     shipping_address: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -13,6 +13,8 @@ from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
+CANCELLABLE_STATES = {OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID}
+
 
 def get_owned_order(db: DbSession, order_id: int, user: User) -> Order:
     """Return the order if it exists and the user may access it, otherwise 404."""
@@ -88,9 +90,10 @@ def cancel_order(
     order_id: int, db: DbSession, user: CurrentUser, background: BackgroundTasks
 ) -> Order:
     order = get_owned_order(db, order_id, user)
-    if order.status != OrderStatus.PENDING:
+    if order.status not in CANCELLABLE_STATES:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Only pending orders can be cancelled"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Orders in state {order.status} cannot be cancelled",
         )
 
     for item in order.items:
