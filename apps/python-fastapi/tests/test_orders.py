@@ -74,3 +74,38 @@ def test_cancel_order_restores_stock(client, db, customer, product, order_for):
 
     again = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert again.status_code == 409
+
+
+def test_cart_code_round_trip(client, db, customer, other_customer, product, order_for):
+    order = order_for(customer, product, quantity=2)
+    code = client.get(f"/orders/{order['id']}/cart", headers=auth_headers(customer)).json()["code"]
+
+    response = client.post(
+        "/orders/import",
+        json={"code": code, "shipping_address": "9 Shared Lane, Leeds"},
+        headers=auth_headers(other_customer),
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["shipping_address"] == "9 Shared Lane, Leeds"
+    assert body["items"] == [{"product_id": product.id, "quantity": 2, "unit_price": "89.99"}]
+
+    db.refresh(product)
+    assert product.stock == 6
+
+
+def test_import_rejects_garbage_cart_code(client, customer):
+    response = client.post(
+        "/orders/import",
+        json={"code": "not-a-cart", "shipping_address": "9 Shared Lane, Leeds"},
+        headers=auth_headers(customer),
+    )
+    assert response.status_code == 422
+
+
+def test_cannot_export_cart_of_another_users_order(
+    client, customer, other_customer, product, order_for
+):
+    order = order_for(other_customer, product)
+    response = client.get(f"/orders/{order['id']}/cart", headers=auth_headers(customer))
+    assert response.status_code == 404
