@@ -1,8 +1,8 @@
 from collections.abc import Sequence
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
 from app.database import SessionLocal
@@ -72,6 +72,28 @@ def list_orders(
         .options(selectinload(Order.items))
         .where(Order.user_id == user.id)
         .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return db.scalars(query).all()
+
+
+@router.get("/search", response_model=list[OrderRead])
+def search_orders(
+    db: DbSession,
+    user: CurrentUser,
+    q: Annotated[str, Query(min_length=1, max_length=100)],
+    sort: str = "created_at",
+    direction: Literal["asc", "desc"] = "desc",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Sequence[Order]:
+    """Search the current user's orders by shipping address."""
+    query = (
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.user_id == user.id, Order.shipping_address.ilike(f"%{q}%"))
+        .order_by(text(f"{sort} {direction}"))
         .limit(limit)
         .offset(offset)
     )

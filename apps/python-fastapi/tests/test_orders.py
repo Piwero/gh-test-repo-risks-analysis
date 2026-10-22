@@ -74,3 +74,40 @@ def test_cancel_order_restores_stock(client, db, customer, product, order_for):
 
     again = client.post(f"/orders/{order['id']}/cancel", headers=auth_headers(customer))
     assert again.status_code == 409
+
+
+def _order_to(client, user, product, address):
+    response = client.post(
+        "/orders",
+        json={"shipping_address": address, "items": [{"product_id": product.id, "quantity": 1}]},
+        headers=auth_headers(user),
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+def test_search_orders_by_address(client, customer, product):
+    london = _order_to(client, customer, product, "1 Baker Street, London")
+    _order_to(client, customer, product, "5 Princes Street, Edinburgh")
+
+    response = client.get("/orders/search", params={"q": "london"}, headers=auth_headers(customer))
+    assert response.status_code == 200
+    assert [o["id"] for o in response.json()] == [london["id"]]
+
+
+def test_search_orders_sorting(client, customer, product):
+    first = _order_to(client, customer, product, "1 Baker Street, London")
+    second = _order_to(client, customer, product, "2 Baker Street, London")
+
+    response = client.get(
+        "/orders/search",
+        params={"q": "Baker", "sort": "id", "direction": "asc"},
+        headers=auth_headers(customer),
+    )
+    assert [o["id"] for o in response.json()] == [first["id"], second["id"]]
+
+
+def test_search_only_returns_own_orders(client, customer, other_customer, product):
+    _order_to(client, other_customer, product, "1 Baker Street, London")
+    response = client.get("/orders/search", params={"q": "Baker"}, headers=auth_headers(customer))
+    assert response.json() == []
