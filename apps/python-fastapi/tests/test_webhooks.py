@@ -81,3 +81,47 @@ def test_order_created_event_is_dispatched(
     request = delivered[0]
     assert str(request.url) == "https://hooks.example.com/orders"
     assert request.headers["X-Signature-SHA256"]
+
+
+def test_preview_webhook_returns_endpoint_response(client, customer, monkeypatch):
+    def fake_post(url, **kwargs):
+        request = httpx.Request("POST", url)
+        return httpx.Response(200, json={"ok": True}, request=request)
+
+    monkeypatch.setattr(webhooks.httpx, "post", fake_post)
+    response = client.post(
+        "/webhooks/preview",
+        json={"url": "https://hooks.example.com/orders"},
+        headers=auth_headers(customer),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["reachable"] is True
+    assert body["status_code"] == 200
+    assert body["body"] == '{"ok":true}'
+
+
+def test_preview_webhook_reports_unreachable_endpoint(client, customer, monkeypatch):
+    def fake_post(url, **kwargs):
+        raise httpx.ConnectError("boom")
+
+    monkeypatch.setattr(webhooks.httpx, "post", fake_post)
+    response = client.post(
+        "/webhooks/preview",
+        json={"url": "https://down.example.com/hook"},
+        headers=auth_headers(customer),
+    )
+    assert response.json() == {
+        "reachable": False,
+        "status_code": None,
+        "content_type": None,
+        "body": None,
+        "error": "ConnectError",
+    }
+
+
+def test_preview_webhook_rejects_non_http_schemes(client, customer):
+    response = client.post(
+        "/webhooks/preview", json={"url": "file:///etc/passwd"}, headers=auth_headers(customer)
+    )
+    assert response.status_code == 422
