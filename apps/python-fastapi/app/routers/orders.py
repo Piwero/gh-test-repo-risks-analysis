@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -9,6 +9,7 @@ from app.database import SessionLocal
 from app.deps import CurrentUser, DbSession
 from app.models import Order, OrderItem, OrderStatus, Product, Role, User
 from app.schemas import OrderCreate, OrderRead
+from app.services.reports import build_orders_archive
 from app.services.webhooks import dispatch_event
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -76,6 +77,23 @@ def list_orders(
         .offset(offset)
     )
     return db.scalars(query).all()
+
+
+@router.get("/export", response_class=Response)
+def export_orders(db: DbSession, user: CurrentUser, filename: str = "orders") -> Response:
+    """Download all of the current user's orders as a zipped CSV report."""
+    orders = db.scalars(
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(Order.user_id == user.id)
+        .order_by(Order.created_at)
+    ).all()
+    archive = build_orders_archive(orders, filename)
+    return Response(
+        content=archive,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}.zip"'},
+    )
 
 
 @router.get("/{order_id}", response_model=OrderRead)
